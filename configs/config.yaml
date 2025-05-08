@@ -1,0 +1,63 @@
+# Default settings applicable to most projects
+# These will be used unless more specific settings are found or overridden
+default_settings:
+  source_extensions:
+    # Python
+    - '.py'
+    - '.pyw'
+    # JavaScript / TypeScript
+    - '.js'
+    - '.jsx'
+    - '.ts'
+    - '.tsx'
+    - '.mjs'
+    - '.cjs'
+    # HTML/CSS
+    - '.html'
+    - '.htm'
+    - '.css'
+    - '.scss'
+    - '.less'
+    # Java / Kotlin / Scala
+    - '.java'
+    - '.kt'
+    - '.scala'
+    - '.gradle'
+    # C / C++ / C#
+    - '.c'
+    - '.h'
+    - '.cpp'
+    - '.hpp'
+    - '.cs'
+    # Ruby
+    - '.rb'
+    # PHP
+    - '.php'
+    # Go
+    - '.go'
+    # Rust
+    - '.rs'
+    # Swift
+    - '.swift'
+
+  omit_dirs:
+    - '.git'
+    - '.hg'
+    - '.svn'
+    - '.idea'
+    - '.vscode'
+    - '.venv'
+    - 'venv'
+    - 'env'
+    - 'node_modules'
+    - '__pycache__'
+    - 'dist'
+    - 'build'
+    - 'out'
+    - 'bin'
+    - 'obj'
+    - 'target'
+    - 'migrations' # Common in Django/Flask
+    - 'alembic'    # Common with SQLAlchemy
+    - 'coverage'
+    - '*.egg-info' # Python packaging temp files
