@@ -108,7 +108,6 @@ def create_project_xml(
             if pattern.endswith('*'))
         ]
 
-
         for filename in filenames_in_dir:
             # Also check if the file itself matches a pattern in omit_dirs (e.g., *.log)
             # This is a simple check; more robust globbing could be added
@@ -163,7 +162,6 @@ def create_project_xml(
             print(f"Error: Could not write to output file {output_xml_file}: {ioe}")
         return
 
-
     # Ensure file content is within CDATA sections using minidom
     project_node_minidom = reparsed_dom.getElementsByTagName("project")[0]
     file_nodes_minidom = project_node_minidom.getElementsByTagName("file")
@@ -199,7 +197,6 @@ def create_project_xml(
                 content_node_minidom.appendChild(
                     reparsed_dom.createCDATASection(content_node_minidom.getAttribute("error_placeholder"))
                 )
-
 
     try:
         with open(output_xml_file, 'w', encoding='utf-8') as f:
