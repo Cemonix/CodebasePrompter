@@ -12,6 +12,8 @@ default_settings:
     - '.tsx'
     - '.mjs'
     - '.cjs'
+    # Vue.js
+    - '.vue'
     # HTML/CSS
     - '.html'
     - '.htm'
