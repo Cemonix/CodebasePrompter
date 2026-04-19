@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 import debugpy
 import yaml
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ElementTree
 from xml.dom import minidom
 
 # Global cache for loaded config to avoid repeated file I/O if called multiple times
@@ -13,7 +13,7 @@ _config_cache = None
 def load_config(config_path: Path = Path("configs/config.yaml")) -> dict[str, dict[str, list[Any]]] | Any:
     """Loads configuration from a YAML file."""
     global _config_cache
-    if _config_cache and _config_cache.get('path') == str(config_path):
+    if _config_cache is not None and _config_cache.get('path') == str(config_path):
         return _config_cache['data']
 
     try:
@@ -72,9 +72,9 @@ def create_project_xml(
     config = load_config(config_path)
     configured_extensions, configured_filenames = get_source_extensions_and_filenames(config)
     configured_extensions.update({ext.lower() for ext in additional_include or []})
-    
+
     default_omit_dirs_from_config = config.get('default_settings', {}).get('omit_dirs', [])
-    
+
     # Combine omit_dirs: config defaults + CLI specified
     # CLI takes precedence if it needs to (though here we're just combining)
     # Normalizing to lowercase for case-insensitive matching
@@ -93,7 +93,7 @@ def create_project_xml(
     print(f"Output XML: {output_xml_file}")
 
     # Create XML root using ElementTree
-    xml_et_root = ET.Element("project")
+    xml_et_root = ElementTree.Element("project")
     xml_et_root.set("name", os.path.basename(project_root_abs))
 
     file_count = 0
@@ -102,21 +102,23 @@ def create_project_xml(
         # Pruning: Modify dirnames in-place to prevent os.walk from descending
         # Use the final_omit_dirs_set for efficient lookup
         dirnames[:] = [
-            d for d in dirnames 
-            if d.lower() not in final_omit_dirs_set and not any(d.lower().endswith(pattern.strip('*')) 
-            for pattern in final_omit_dirs_set 
+            d for d in dirnames
+            if d.lower() not in final_omit_dirs_set and not any(d.lower().endswith(pattern.strip('*'))
+            for pattern in final_omit_dirs_set
             if pattern.endswith('*'))
         ]
 
         for filename in filenames_in_dir:
             # Also check if the file itself matches a pattern in omit_dirs (e.g., *.log)
             # This is a simple check; more robust globbing could be added
-            if filename.lower() in final_omit_dirs_set or \
-               any(
-                   filename.lower().endswith(pattern.strip('*')) 
-                   for pattern in final_omit_dirs_set 
-                   if pattern.endswith('*') and not pattern.startswith('*')
-                ):
+            if (
+                    filename.lower() in final_omit_dirs_set
+                    or any(
+                        filename.lower().endswith(pattern.strip('*'))
+                        for pattern in final_omit_dirs_set
+                        if pattern.endswith('*') and not pattern.startswith('*')
+                    )
+            ):
                 continue
 
             if is_source_file(filename, configured_extensions, configured_filenames):
@@ -126,25 +128,25 @@ def create_project_xml(
 
                 print(f"  Adding: {relative_path_posix}")
 
-                file_element = ET.SubElement(xml_et_root, "file")
-                
-                path_element = ET.SubElement(file_element, "path")
+                file_element = ElementTree.SubElement(xml_et_root, "file")
+
+                path_element = ElementTree.SubElement(file_element, "path")
                 path_element.text = relative_path_posix
 
-                content_element = ET.SubElement(file_element, "content")
+                content_element = ElementTree.SubElement(file_element, "content")
                 try:
                     with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
                         file_content = f.read()
                         # Set text for ElementTree. CDATA will be handled by minidom later.
-                        content_element.text = file_content 
+                        content_element.text = file_content
                     file_count += 1
                 except Exception as e:
                     print(f"    Warning: Could not read file {relative_path_posix}: {e}")
-                    content_element.text = f"Error reading file: {e}" # Store error as text
+                    content_element.text = f"Error reading file: {e}"  # Store error as text
 
     # Convert ElementTree to string, then parse with minidom for pretty printing and CDATA
-    rough_string = ET.tostring(xml_et_root, 'utf-8')
-    
+    rough_string = ElementTree.tostring(xml_et_root, 'utf-8')
+
     try:
         reparsed_dom = minidom.parseString(rough_string)
     except Exception as e:
@@ -155,9 +157,10 @@ def create_project_xml(
         )
         # Fallback: write the rough (but valid) XML string from ET
         try:
-            with open(output_xml_file, 'wb') as f: # 'wb' for 'utf-8' encoded bytes
+            with open(output_xml_file, 'wb') as f:  # 'wb' for 'utf-8' encoded bytes
                 f.write(rough_string)
-            print(f"\nSuccessfully created XML (raw, non-pretty-printed): {output_xml_file} ({file_count} files included)")
+            print(
+                f"\nSuccessfully created XML (raw, non-pretty-printed): {output_xml_file} ({file_count} files included)")
         except IOError as ioe:
             print(f"Error: Could not write to output file {output_xml_file}: {ioe}")
         return
@@ -175,25 +178,25 @@ def create_project_xml(
             for child in content_node_minidom.childNodes:
                 if child.nodeType == child.TEXT_NODE:
                     text_parts.append(child.data)
-                elif child.nodeType == child.CDATA_SECTION_NODE: # Should not happen yet, but good to handle
+                elif child.nodeType == child.CDATA_SECTION_NODE:  # Should not happen yet, but good to handle
                     text_parts.append(child.data)
                 # Potentially handle other node types if necessary, or log warning
-            
+
             full_text_content = "".join(text_parts)
 
             # Remove old children
             while content_node_minidom.firstChild:
                 content_node_minidom.removeChild(content_node_minidom.firstChild)
-            
+
             # Add new CDATA section
-            if full_text_content: # Only create CDATA if there's content
+            if full_text_content:  # Only create CDATA if there's content
                 cdata_node = reparsed_dom.createCDATASection(full_text_content)
                 content_node_minidom.appendChild(cdata_node)
             # If content was empty (e.g. error message "Error reading file: ...") and we want it empty,
             # or if it was genuinely an empty file, this will result in <content></content>
             # If we want to put the error message *inside* CDATA, ensure full_text_content has it.
             # The current ET.SubElement sets text, so it should be there.
-            elif content_node_minidom.getAttribute("error_placeholder"): # A bit of a hack if we set this attribute earlier
+            elif content_node_minidom.getAttribute("error_placeholder"):  # A bit of a hack if we set this attribute earlier
                 content_node_minidom.appendChild(
                     reparsed_dom.createCDATASection(content_node_minidom.getAttribute("error_placeholder"))
                 )
@@ -233,7 +236,7 @@ def main() -> None:
         "--debug", action='store_true',
         help="Enable debug mode for verbose output."
     )
-    
+
     args = parser.parse_args()
 
     if args.debug:
